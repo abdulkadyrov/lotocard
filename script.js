@@ -195,13 +195,29 @@ function switchScreen(screen) {
     state.screen = screen;
     document.getElementById('main-menu').classList.toggle('hidden', screen !== 'menu');
     document.getElementById('game-screen').classList.toggle('hidden', screen !== 'game');
+    updateSearchPanelOffset();
+}
+
+function updateSearchPanelOffset() {
+    const app = document.getElementById('app');
+    const gameScreen = document.getElementById('game-screen');
+    const searchPanel = document.getElementById('search-panel');
+    if (!app || !gameScreen || !searchPanel) return;
+
+    const isOpen = state.screen === 'game' && state.panels.search && !searchPanel.classList.contains('hidden');
+    const panelHeight = isOpen ? Math.ceil(searchPanel.getBoundingClientRect().height) : 0;
+
+    app.style.setProperty('--search-panel-height', `${panelHeight}px`);
+    gameScreen.classList.toggle('search-open', isOpen);
 }
 
 // Переключение панели
 function togglePanel(panel, open) {
     state.panels[panel] = open;
-    document.getElementById(`${panel}-panel`).classList.toggle('open', open);
-    document.getElementById(`${panel}-panel`).classList.toggle('hidden', !open);
+    const panelElement = document.getElementById(`${panel}-panel`);
+    panelElement.classList.toggle('open', open);
+    panelElement.classList.toggle('hidden', !open);
+    updateSearchPanelOffset();
 }
 
 // Выбор количества карточек
@@ -311,7 +327,7 @@ function renderFavorites() {
     }
     state.favorites.forEach(card => {
         const cardDiv = document.createElement('div');
-        cardDiv.className = 'card';
+        cardDiv.className = 'favorite-item';
         renderCard(card, cardDiv);
         const removeBtn = document.createElement('button');
         removeBtn.textContent = 'УБРАТЬ';
@@ -365,6 +381,7 @@ function showToast(message) {
 document.addEventListener('DOMContentLoaded', () => {
     loadFromStorage();
     renderMenu();
+    updateSearchPanelOffset();
 
     // Главное меню
     document.getElementById('select-count-btn').addEventListener('click', () => togglePanel('count', true));
@@ -377,7 +394,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-count-panel').addEventListener('click', () => togglePanel('count', false));
 
     // Экран игры
-    document.getElementById('search-btn').addEventListener('click', () => togglePanel('search', true));
+    document.getElementById('search-btn').addEventListener('click', () => {
+        const shouldOpen = !state.panels.search;
+        togglePanel('search', shouldOpen);
+        if (shouldOpen) {
+            setTimeout(() => document.getElementById('search-input')?.focus(), 0);
+        }
+    });
     document.getElementById('restart-btn').addEventListener('click', restartGame);
     document.getElementById('back-to-menu-btn').addEventListener('click', backToMenu);
 
@@ -424,4 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js');
     }
+
+    window.addEventListener('resize', updateSearchPanelOffset);
 });
