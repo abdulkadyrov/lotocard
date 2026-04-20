@@ -1,0 +1,332 @@
+/* Основные стили */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #001122;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    font-weight: bold;
+    overflow-x: hidden;
+}
+
+#app {
+    min-height: 100vh;
+    position: relative;
+}
+
+.screen {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.screen h1, .screen h2, .screen p, .screen button, .screen div {
+    font-weight: bold;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Панели */
+.panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100vh;
+    background-color: #002244;
+    border-left: 2px solid #00AA00;
+    box-shadow: -5px 0 15px rgba(0, 170, 0, 0.3);
+    padding: 20px;
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+}
+
+.panel.open {
+    transform: translateX(0);
+}
+
+.panel h2 {
+    color: #00AA00;
+    margin-bottom: 20px;
+}
+
+.panel button {
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.panel button:hover {
+    background-color: #008800;
+}
+
+.panel button:active {
+    background-color: #006600;
+}
+
+/* Кнопки выбора количества */
+.count-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.count-buttons button {
+    font-size: 24px;
+    padding: 20px;
+}
+
+/* Клавиатура поиска */
+.keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.keypad button {
+    font-size: 20px;
+    padding: 15px;
+}
+
+/* Модальное окно */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background-color: #002244;
+    padding: 30px;
+    border-radius: 10px;
+    border: 2px solid #00AA00;
+    box-shadow: 0 0 20px rgba(0, 170, 0, 0.5);
+    text-align: center;
+}
+
+.modal-content h2 {
+    color: #00AA00;
+    margin-bottom: 20px;
+}
+
+.modal-content button {
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    margin: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+    background-color: #008800;
+}
+
+/* Кнопки главного меню */
+#main-menu button {
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 15px 20px;
+    margin: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+#main-menu button:hover {
+    background-color: #008800;
+}
+
+#main-menu button:active {
+    background-color: #006600;
+}
+
+#main-menu button:disabled {
+    background-color: #444444;
+    cursor: not-allowed;
+}
+
+/* Экран игры */
+#game-screen button {
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+#game-screen button:hover {
+    background-color: #008800;
+}
+
+#game-screen button:active {
+    background-color: #006600;
+}
+
+/* Карточки */
+.card {
+    background-color: #002244;
+    border: 2px solid #00AA00;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 10px;
+    box-shadow: 0 0 10px rgba(0, 170, 0, 0.3);
+    display: inline-block;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    width: 270px;
+    height: 90px;
+}
+
+.cell {
+    background-color: #003366;
+    border: 1px solid #00AA00;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cell:hover {
+    background-color: #004477;
+}
+
+.cell.marked {
+    background-color: #00FF00;
+    color: #000000;
+}
+
+.cell.empty {
+    background-color: #001122;
+    cursor: default;
+}
+
+/* Действия карточки */
+.card-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.card-actions button {
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.card-actions button:hover {
+    background-color: #008800;
+}
+
+/* Кнопка избранных */
+#favorites-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #00AA00;
+    color: #ffffff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 500;
+    transition: background-color 0.2s;
+}
+
+#favorites-btn:hover {
+    background-color: #008800;
+}
+
+/* Уведомления */
+#toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #00AA00;
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 3000;
+}
+
+#toast.show {
+    opacity: 1;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .panel {
+        width: 100%;
+    }
+
+    .card-grid {
+        width: 100%;
+        max-width: 270px;
+    }
+
+    .cell {
+        font-size: 12px;
+    }
+
+    .keypad {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .keypad button {
+        padding: 10px;
+        font-size: 18px;
+    }
+
+    #main-menu button, #game-screen button {
+        padding: 12px 18px;
+        font-size: 14px;
+    }
+}

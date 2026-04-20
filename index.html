@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЛОТО</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Главное меню -->
+        <div id="main-menu" class="screen">
+            <h1>ЛОТО</h1>
+            <p>Классическая игра в лото. Выберите количество карточек и начните игру!</p>
+            <button id="select-count-btn">ВЫБРАТЬ КОЛИЧЕСТВО КАРТОЧЕК</button>
+            <div id="selected-count">Выбрано: 0</div>
+            <div id="cards-preview"></div>
+            <button id="start-game-btn" disabled>НАЧАТЬ ИГРУ</button>
+        </div>
+
+        <!-- Экран игры -->
+        <div id="game-screen" class="screen hidden">
+            <h1>ИГРА</h1>
+            <button id="search-btn">ПОИСК</button>
+            <button id="restart-btn">ЗАНОВО</button>
+            <button id="back-to-menu-btn">В МЕНЮ</button>
+            <div id="game-cards"></div>
+        </div>
+
+        <!-- Панель выбора количества карточек -->
+        <div id="count-panel" class="panel hidden">
+            <h2>ВЫБЕРИТЕ КОЛИЧЕСТВО</h2>
+            <div class="count-buttons">
+                <button data-count="1">1</button>
+                <button data-count="2">2</button>
+                <button data-count="3">3</button>
+                <button data-count="4">4</button>
+                <button data-count="5">5</button>
+            </div>
+            <button id="close-count-panel">ЗАКРЫТЬ</button>
+        </div>
+
+        <!-- Панель поиска чисел -->
+        <div id="search-panel" class="panel hidden">
+            <h2>ПОИСК ЧИСЛА</h2>
+            <input type="text" id="search-input" maxlength="2" placeholder="00">
+            <div class="keypad">
+                <button data-key="1">1</button>
+                <button data-key="2">2</button>
+                <button data-key="3">3</button>
+                <button data-key="4">4</button>
+                <button data-key="5">5</button>
+                <button data-key="6">6</button>
+                <button data-key="7">7</button>
+                <button data-key="8">8</button>
+                <button data-key="9">9</button>
+                <button data-key="0">0</button>
+                <button id="clear-search">C</button>
+                <button id="backspace-search">←</button>
+            </div>
+            <button id="check-search">ПРОВЕРКА</button>
+            <button id="close-search-panel">ЗАКРЫТЬ</button>
+        </div>
+
+        <!-- Панель избранных карточек -->
+        <div id="favorites-panel" class="panel hidden">
+            <h2>ИЗБРАННЫЕ КАРТОЧКИ</h2>
+            <div id="favorites-list"></div>
+            <button id="close-favorites-panel">ЗАКРЫТЬ</button>
+        </div>
+
+        <!-- Кнопка избранных -->
+        <button id="favorites-btn">КАРТОЧКИ</button>
+
+        <!-- Модальное окно победы -->
+        <div id="win-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>ВЫ ВЫИГРАЛИ!</h2>
+                <button id="continue-btn">ПРОДОЛЖИТЬ</button>
+                <button id="restart-modal-btn">ЗАНОВО</button>
+            </div>
+        </div>
+
+        <!-- Уведомления -->
+        <div id="toast"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
