@@ -361,6 +361,7 @@ body {
     opacity: 0;
     transition: opacity 0.3s;
     z-index: 3000;
+    pointer-events: none;
 }
 
 #toast.show {
