@@ -14,17 +14,23 @@ let state = {
     }
 };
 
+const STORAGE_KEY = 'lotocard-favorites';
+const LEGACY_STORAGE_KEY = 'loto-favorites';
+
 // Загрузка из localStorage
 function loadFromStorage() {
-    const fav = localStorage.getItem('loto-favorites');
+    const fav = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     if (fav) {
         state.favorites = JSON.parse(fav);
+        if (!localStorage.getItem(STORAGE_KEY)) {
+            localStorage.setItem(STORAGE_KEY, fav);
+        }
     }
 }
 
 // Сохранение в localStorage
 function saveToStorage() {
-    localStorage.setItem('loto-favorites', JSON.stringify(state.favorites));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.favorites));
 }
 
 // Генерация шаблона карточки (маска заполнения)
@@ -445,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Регистрация service worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js');
+        navigator.serviceWorker.register('./service-worker.js', { scope: './' });
     }
 
     window.addEventListener('resize', updateSearchPanelOffset);
