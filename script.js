@@ -186,7 +186,7 @@ function renderMenu() {
     preview.innerHTML = '';
     state.cards.forEach(card => renderCard(card, preview));
     document.getElementById('selected-count').textContent = `Выбрано: ${state.selectedCount}`;
-    document.getElementById('start-game-btn').disabled = state.selectedCount === 0;
+    document.getElementById('start-game-btn').disabled = state.cards.length === 0;
 }
 
 // Рендер экрана игры
@@ -223,6 +223,7 @@ function togglePanel(panel, open) {
     const panelElement = document.getElementById(`${panel}-panel`);
     panelElement.classList.toggle('open', open);
     panelElement.classList.toggle('hidden', !open);
+    panelElement.setAttribute('aria-hidden', String(!open));
     updateSearchPanelOffset();
 }
 
@@ -239,6 +240,10 @@ function selectCount(count) {
 
 // Начало игры
 function startGame() {
+    if (state.cards.length === 0) {
+        showToast('Сначала выберите хотя бы одну карточку');
+        return;
+    }
     state.gameCards = state.cards.map(card => ({ ...card, marked: Array(3).fill().map(() => Array(9).fill(false)), wonRows: [false, false, false] }));
     state.markedCells = {};
     state.wonRows = {};
