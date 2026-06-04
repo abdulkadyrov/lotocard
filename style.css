@@ -358,7 +358,8 @@ h2 {
 .called-panel,
 .cards-section,
 .cards-toolbar,
-.search-panel {
+.search-panel,
+.check-result {
   padding: clamp(16px, 2vw, 24px);
 }
 
@@ -424,6 +425,21 @@ h2 {
 .field {
   display: grid;
   gap: 8px;
+}
+
+.speed-field b {
+  color: var(--gold);
+}
+
+.speed-field input[type="range"] {
+  height: 10px;
+  min-height: 10px;
+  padding: 0;
+  border: 1px solid rgba(246, 210, 140, 0.18);
+  border-radius: 999px;
+  accent-color: var(--green-light);
+  background: linear-gradient(90deg, #2c681d, #805521);
+  cursor: pointer;
 }
 
 .play-area {
@@ -546,6 +562,28 @@ h2 {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 10px;
+}
+
+.check-result {
+  min-height: 52px;
+  margin: 0 0 16px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(246, 210, 140, 0.18);
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(7, 5, 3, 0.48);
+}
+
+.check-result:empty {
+  display: none;
+}
+
+.check-result.success {
+  color: #fff9dc;
+  border-color: rgba(126, 184, 74, 0.58);
+  background: rgba(48, 104, 31, 0.32);
+  box-shadow: 0 0 18px var(--green-glow);
 }
 
 @keyframes pop {

@@ -1,9 +1,9 @@
 const STORAGE_KEY = "loto-online-premium-state-v1";
 const MAX_NUMBER = 90;
 const SPEEDS = {
-  slow: 4200,
-  normal: 2600,
-  fast: 1200
+  slow: 4.2,
+  normal: 2.6,
+  fast: 1.2
 };
 
 const state = {
@@ -13,6 +13,7 @@ const state = {
     called: [],
     current: null,
     speed: "normal",
+    intervalSeconds: SPEEDS.normal,
     running: false,
     timer: null,
     cardCount: 4,
@@ -50,7 +51,9 @@ function bindEvents() {
   $("#reset-draw").addEventListener("click", resetHostGame);
   $("#clear-called").addEventListener("click", clearCalledNumbers);
   $("#generate-host-cards").addEventListener("click", generateHostCards);
+  $("#check-host-win").addEventListener("click", checkHostWin);
   $("#speed-select").addEventListener("change", updateHostSettings);
+  $("#speed-range").addEventListener("input", updateCustomSpeed);
   $("#host-card-count").addEventListener("change", updateHostSettings);
 
   $("#generate-player-cards").addEventListener("click", generatePlayerCards);
@@ -115,7 +118,7 @@ function resumeDraw() {
 function scheduleNextDraw() {
   pauseDraw();
   state.host.running = true;
-  state.host.timer = setInterval(drawNextNumber, SPEEDS[state.host.speed]);
+  state.host.timer = setInterval(drawNextNumber, getHostIntervalMs());
   saveState();
 }
 
@@ -140,6 +143,10 @@ function resetHostGame() {
   state.host.pool = createNumberPool();
   state.host.called = [];
   state.host.current = null;
+  state.host.cards.forEach((card) => {
+    card.manualMarks = [];
+  });
+  $("#host-win-result").textContent = "";
   renderHost();
   saveState();
 }
@@ -150,7 +157,19 @@ function clearCalledNumbers() {
 
 function updateHostSettings() {
   state.host.speed = $("#speed-select").value;
+  if (state.host.speed !== "custom") {
+    state.host.intervalSeconds = SPEEDS[state.host.speed];
+  }
   state.host.cardCount = Number.parseInt($("#host-card-count").value, 10);
+  syncSpeedControls();
+  if (state.host.running) scheduleNextDraw();
+  saveState();
+}
+
+function updateCustomSpeed() {
+  state.host.speed = "custom";
+  state.host.intervalSeconds = sanitizeInterval($("#speed-range").value);
+  syncSpeedControls();
   if (state.host.running) scheduleNextDraw();
   saveState();
 }
@@ -206,7 +225,8 @@ function createLotoCard(number) {
   return {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
     title: `Карточка ${number}`,
-    numbers: values
+    numbers: values,
+    manualMarks: []
   };
 }
 
@@ -237,8 +257,50 @@ function findPlayerNumber() {
 
 function clearPlayerMarks() {
   state.player.markedNumbers = [];
+  state.player.cards.forEach((card) => {
+    card.manualMarks = [];
+  });
   renderPlayerCards();
   saveState();
+}
+
+function toggleCardCell(mode, cardId, value) {
+  const cards = mode === "host" ? state.host.cards : state.player.cards;
+  const card = cards.find((item) => item.id === cardId);
+  if (!card) return;
+
+  card.manualMarks = sanitizeNumberList(card.manualMarks);
+  if (card.manualMarks.includes(value)) {
+    card.manualMarks = card.manualMarks.filter((number) => number !== value);
+  } else {
+    card.manualMarks.push(value);
+  }
+
+  $("#host-win-result").textContent = "";
+  render();
+  saveState();
+}
+
+function checkHostWin() {
+  const winners = [];
+  state.host.cards.forEach((card) => {
+    card.numbers.forEach((row, rowIndex) => {
+      const rowNumbers = row.filter((value) => value !== null);
+      if (rowNumbers.length === 5 && rowNumbers.every((value) => state.host.called.includes(value))) {
+        winners.push(`${card.title}, строка ${rowIndex + 1}`);
+      }
+    });
+  });
+
+  const result = $("#host-win-result");
+  if (winners.length === 0) {
+    result.textContent = "Пока нет закрытой строки.";
+    result.classList.remove("success");
+    return;
+  }
+
+  result.textContent = `Выигрыш: ${winners.join("; ")}.`;
+  result.classList.add("success");
 }
 
 function render() {
@@ -252,8 +314,9 @@ function renderHost() {
   $("#called-count").textContent = String(state.host.called.length);
   $("#speed-select").value = state.host.speed;
   $("#host-card-count").value = String(state.host.cardCount);
+  syncSpeedControls();
   renderCalledNumbers();
-  renderCards("#host-cards", state.host.cards, state.host.called);
+  renderCards("#host-cards", state.host.cards, state.host.called, "host");
   flashCurrentNumber();
 }
 
@@ -263,7 +326,7 @@ function renderPlayer() {
 }
 
 function renderPlayerCards() {
-  renderCards("#player-cards", state.player.cards, state.player.markedNumbers);
+  renderCards("#player-cards", state.player.cards, state.player.markedNumbers, "player");
 }
 
 function renderCalledNumbers() {
@@ -278,10 +341,12 @@ function renderCalledNumbers() {
   });
 }
 
-function renderCards(selector, cards, markedNumbers) {
+function renderCards(selector, cards, markedNumbers, mode) {
   const container = $(selector);
   container.innerHTML = "";
   cards.forEach((card) => {
+    card.manualMarks = sanitizeNumberList(card.manualMarks);
+    const cardMarks = getCardMarks(card, markedNumbers);
     const article = document.createElement("article");
     article.className = "loto-card";
 
@@ -300,7 +365,8 @@ function renderCards(selector, cards, markedNumbers) {
         cell.disabled = true;
       } else {
         cell.textContent = String(value);
-        if (markedNumbers.includes(value)) cell.classList.add("marked");
+        if (cardMarks.includes(value)) cell.classList.add("marked");
+        cell.addEventListener("click", () => toggleCardCell(mode, card.id, value));
       }
       grid.appendChild(cell);
     });
@@ -308,6 +374,10 @@ function renderCards(selector, cards, markedNumbers) {
     article.append(title, grid);
     container.appendChild(article);
   });
+}
+
+function getCardMarks(card, markedNumbers) {
+  return [...new Set([...markedNumbers, ...sanitizeNumberList(card.manualMarks)])];
 }
 
 function flashCurrentNumber() {
@@ -334,6 +404,7 @@ function saveState() {
       called: state.host.called,
       current: state.host.current,
       speed: state.host.speed,
+      intervalSeconds: state.host.intervalSeconds,
       cardCount: state.host.cardCount,
       cards: state.host.cards
     },
@@ -355,7 +426,8 @@ function restoreState() {
     state.host.pool = sanitizeNumberList(saved.host?.pool);
     state.host.called = sanitizeNumberList(saved.host?.called, false);
     state.host.current = Number.isInteger(saved.host?.current) ? saved.host.current : null;
-    state.host.speed = SPEEDS[saved.host?.speed] ? saved.host.speed : "normal";
+    state.host.speed = ["slow", "normal", "fast", "custom"].includes(saved.host?.speed) ? saved.host.speed : "normal";
+    state.host.intervalSeconds = sanitizeInterval(saved.host?.intervalSeconds || SPEEDS[state.host.speed] || SPEEDS.normal);
     state.host.cardCount = clampCount(saved.host?.cardCount || 4);
     state.host.cards = sanitizeCards(saved.host?.cards);
     state.player.cardCount = clampCount(saved.player?.cardCount || 4);
@@ -378,6 +450,7 @@ function sanitizeCards(cards) {
     .map((card, index) => ({
       id: card.id || `${Date.now()}-${index}`,
       title: card.title || `Карточка ${index + 1}`,
+      manualMarks: sanitizeNumberList(card.manualMarks),
       numbers: card.numbers.map((row) => row.map((value) => {
         const number = Number.parseInt(value, 10);
         return Number.isInteger(number) && number >= 1 && number <= MAX_NUMBER ? number : null;
@@ -391,6 +464,27 @@ function sanitizeNumberList(list, unique = true) {
     .map((value) => Number.parseInt(value, 10))
     .filter((value) => Number.isInteger(value) && value >= 1 && value <= MAX_NUMBER);
   return unique ? [...new Set(numbers)] : numbers;
+}
+
+function syncSpeedControls() {
+  const seconds = sanitizeInterval(state.host.intervalSeconds);
+  $("#speed-range").value = String(seconds);
+  $("#speed-value").textContent = `${formatSeconds(seconds)} сек`;
+  $("#speed-select").value = state.host.speed;
+}
+
+function getHostIntervalMs() {
+  return sanitizeInterval(state.host.intervalSeconds) * 1000;
+}
+
+function sanitizeInterval(value) {
+  const seconds = Number.parseFloat(value);
+  if (!Number.isFinite(seconds)) return SPEEDS.normal;
+  return Math.min(8, Math.max(0.8, seconds));
+}
+
+function formatSeconds(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function clampCount(value) {

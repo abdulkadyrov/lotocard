@@ -85,7 +85,13 @@
               <option value="slow">Медленно</option>
               <option value="normal" selected>Нормально</option>
               <option value="fast">Быстро</option>
+              <option value="custom">Своя скорость</option>
             </select>
+          </label>
+
+          <label class="field speed-field">
+            <span>Интервал: <b id="speed-value">2.6 сек</b></span>
+            <input id="speed-range" type="range" min="0.8" max="8" step="0.2" value="2.6">
           </label>
 
           <label class="field">
@@ -114,7 +120,9 @@
           <section class="cards-section">
             <div class="section-head">
               <h2>Мои карточки</h2>
+              <button class="primary-button" type="button" id="check-host-win">Проверить выигрыш</button>
             </div>
+            <div class="check-result" id="host-win-result" aria-live="polite"></div>
             <div class="cards-grid" id="host-cards"></div>
           </section>
         </section>
