@@ -390,9 +390,10 @@ function flashCurrentNumber() {
 function speakNumber(number) {
   if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(`Число ${number}`);
+  const isFastSpeech = sanitizeInterval(state.host.intervalSeconds) < 2;
+  const utterance = new SpeechSynthesisUtterance(isFastSpeech ? String(number) : `Число ${number}`);
   utterance.lang = "ru-RU";
-  utterance.rate = 0.9;
+  utterance.rate = isFastSpeech ? 1.08 : 0.9;
   window.speechSynthesis.speak(utterance);
 }
 
