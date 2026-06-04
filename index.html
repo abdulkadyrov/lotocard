@@ -1,90 +1,155 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ЛОТО</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#120b05">
+  <title>Лото Онлайн</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Главное меню -->
-        <div id="main-menu" class="screen">
-            <h1>ЛОТО</h1>
-            <p>Классическая игра в лото. Выберите количество карточек и начните игру!</p>
-            <button id="select-count-btn">ВЫБРАТЬ КОЛИЧЕСТВО КАРТОЧЕК</button>
-            <div id="selected-count">Выбрано: 0</div>
-            <div id="cards-preview"></div>
-            <button id="start-game-btn" disabled>НАЧАТЬ ИГРУ</button>
+  <div class="decor decor-left" aria-hidden="true"></div>
+  <div class="decor decor-right" aria-hidden="true"></div>
+
+  <div id="app" class="app">
+    <header class="topbar">
+      <button class="icon-button mobile-menu" type="button" data-action="home" aria-label="Главный экран">☰</button>
+      <button class="brand" type="button" data-action="home" aria-label="Лото Онлайн">
+        <img src="assets/dice-logo.png" alt="">
+        <span>ЛОТО ОНЛАЙН</span>
+      </button>
+      <nav class="topnav" aria-label="Навигация">
+        <button type="button" data-action="home">Главная</button>
+        <button type="button" data-screen-link="host">Ведущий</button>
+        <button type="button" data-screen-link="cards">Карточки</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="screen home-screen" id="home-screen" data-screen="home">
+        <div class="hero-title">
+          <h1>ЛОТО ОНЛАЙН</h1>
+          <p>Премиальная классическая игра в лото для семьи, друзей и большой компании.</p>
         </div>
 
-        <!-- Экран игры -->
-        <div id="game-screen" class="screen hidden">
-            <h1>ИГРА</h1>
-            <button id="search-btn">ПОИСК</button>
-            <button id="restart-btn">ЗАНОВО</button>
-            <button id="back-to-menu-btn">В МЕНЮ</button>
-            <div id="game-cards"></div>
+        <div class="home-cards">
+          <article class="choice-card">
+            <div class="choice-icon">+</div>
+            <h2>Создать лото</h2>
+            <p>Запустите выпадение чисел, настройте скорость и играйте с карточками.</p>
+            <button class="primary-button" type="button" data-screen-link="host">Создать</button>
+          </article>
+
+          <article class="choice-card">
+            <div class="choice-icon people">♟</div>
+            <h2>Открыть карточки</h2>
+            <p>Режим игрока: только карточки, ручной поиск и удобная проверка чисел.</p>
+            <button class="gold-button" type="button" data-screen-link="cards">Открыть</button>
+          </article>
         </div>
 
-        <!-- Панель выбора количества карточек -->
-        <div id="count-panel" class="panel panel-drawer hidden">
-            <h2>ВЫБЕРИТЕ КОЛИЧЕСТВО</h2>
-            <div class="count-buttons">
-                <button data-count="1">1</button>
-                <button data-count="2">2</button>
-                <button data-count="3">3</button>
-                <button data-count="4">4</button>
-                <button data-count="5">5</button>
+        <section class="how-panel">
+          <h2>Как играть</h2>
+          <ol>
+            <li><span>1</span>Создайте игру</li>
+            <li><span>2</span>Запустите выпадение чисел</li>
+            <li><span>3</span>Отмечайте числа на карточках</li>
+          </ol>
+        </section>
+      </section>
+
+      <section class="screen host-screen hidden" id="host-screen" data-screen="host">
+        <aside class="side-panel">
+          <div class="panel-head">
+            <button class="back-button" type="button" data-action="home">← Назад</button>
+            <h2>Ведущий</h2>
+          </div>
+
+          <div class="number-stage">
+            <span>Текущее число</span>
+            <div class="current-number" id="current-number">--</div>
+            <small>Осталось чисел: <b id="numbers-left">90</b></small>
+          </div>
+
+          <div class="control-grid">
+            <button class="primary-button" type="button" id="start-draw">Старт</button>
+            <button class="gold-button" type="button" id="pause-draw">Пауза</button>
+            <button class="gold-button" type="button" id="resume-draw">Продолжить</button>
+            <button class="danger-button" type="button" id="reset-draw">Сбросить</button>
+          </div>
+
+          <label class="field">
+            <span>Скорость</span>
+            <select id="speed-select">
+              <option value="slow">Медленно</option>
+              <option value="normal" selected>Нормально</option>
+              <option value="fast">Быстро</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Количество карточек</span>
+            <select id="host-card-count">
+              <option value="1">1 карточка</option>
+              <option value="2">2 карточки</option>
+              <option value="3">3 карточки</option>
+              <option value="4" selected>4 карточки</option>
+              <option value="5">5 карточек</option>
+            </select>
+          </label>
+
+          <button class="wide-button" type="button" id="generate-host-cards">Сгенерировать карточки</button>
+        </aside>
+
+        <section class="play-area">
+          <section class="called-panel">
+            <div class="section-head">
+              <h2>Выпавшие числа (<span id="called-count">0</span>)</h2>
+              <button class="ghost-button" type="button" id="clear-called">Очистить</button>
             </div>
-            <button id="close-count-panel">ЗАКРЫТЬ</button>
-        </div>
+            <div class="called-list" id="called-list"></div>
+          </section>
 
-        <!-- Панель поиска чисел -->
-        <div id="search-panel" class="panel panel-widget hidden">
-            <h2>ПОИСК ЧИСЛА</h2>
-            <input type="text" id="search-input" maxlength="2" placeholder="00">
-            <div class="keypad">
-                <button data-key="1">1</button>
-                <button data-key="2">2</button>
-                <button data-key="3">3</button>
-                <button data-key="4">4</button>
-                <button data-key="5">5</button>
-                <button data-key="6">6</button>
-                <button data-key="7">7</button>
-                <button data-key="8">8</button>
-                <button data-key="9">9</button>
-                <button data-key="0">0</button>
-                <button id="clear-search">C</button>
-                <button id="backspace-search">←</button>
+          <section class="cards-section">
+            <div class="section-head">
+              <h2>Мои карточки</h2>
             </div>
-            <button id="check-search">ПРОВЕРКА</button>
-            <button id="close-search-panel">ЗАКРЫТЬ</button>
+            <div class="cards-grid" id="host-cards"></div>
+          </section>
+        </section>
+      </section>
+
+      <section class="screen cards-screen hidden" id="cards-screen" data-screen="cards">
+        <div class="cards-toolbar">
+          <button class="back-button" type="button" data-action="home">← Назад</button>
+          <h1>Открыть карточки</h1>
+          <div class="toolbar-controls">
+            <label class="field compact-field">
+              <span>Карточки</span>
+              <select id="player-card-count">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <button class="gold-button" type="button" id="generate-player-cards">Сгенерировать карточки</button>
+          </div>
         </div>
 
-        <!-- Панель избранных карточек -->
-        <div id="favorites-panel" class="panel panel-drawer hidden">
-            <h2>ИЗБРАННЫЕ КАРТОЧКИ</h2>
-            <div id="favorites-list"></div>
-            <button id="close-favorites-panel">ЗАКРЫТЬ</button>
+        <div class="search-panel">
+          <input id="manual-number" type="number" min="1" max="90" inputmode="numeric" placeholder="Поиск числа...">
+          <button class="primary-button" type="button" id="find-number">Найти</button>
+          <button class="ghost-button" type="button" id="clear-player-marks">Очистить отметки</button>
         </div>
 
-        <!-- Кнопка избранных -->
-        <button id="favorites-btn">КАРТОЧКИ</button>
+        <div class="cards-grid cards-grid-wide" id="player-cards"></div>
+      </section>
+    </main>
+  </div>
 
-        <!-- Модальное окно победы -->
-        <div id="win-modal" class="modal hidden">
-            <div class="modal-content">
-                <h2>ВЫ ВЫИГРАЛИ!</h2>
-                <button id="continue-btn">ПРОДОЛЖИТЬ</button>
-                <button id="restart-modal-btn">ЗАНОВО</button>
-            </div>
-        </div>
-
-        <!-- Уведомления -->
-        <div id="toast"></div>
-    </div>
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

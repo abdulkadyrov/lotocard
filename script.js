@@ -1,463 +1,418 @@
-// Состояние приложения
-let state = {
-    screen: 'menu', // 'menu' или 'game'
-    selectedCount: 0,
-    cards: [], // карточки для подготовки
-    gameCards: [], // карточки в игре
-    favorites: [], // избранные карточки
-    markedCells: {}, // отмеченные клетки по id карточки
-    wonRows: {}, // засчитанные ряды по id карточки
-    panels: {
-        count: false,
-        search: false,
-        favorites: false
-    }
+const STORAGE_KEY = "loto-online-premium-state-v1";
+const MAX_NUMBER = 90;
+const SPEEDS = {
+  slow: 4200,
+  normal: 2600,
+  fast: 1200
 };
 
-const STORAGE_KEY = 'lotocard-favorites';
-const LEGACY_STORAGE_KEY = 'loto-favorites';
+const state = {
+  screen: "home",
+  host: {
+    pool: [],
+    called: [],
+    current: null,
+    speed: "normal",
+    running: false,
+    timer: null,
+    cardCount: 4,
+    cards: []
+  },
+  player: {
+    cardCount: 4,
+    cards: [],
+    markedNumbers: []
+  }
+};
 
-// Загрузка из localStorage
-function loadFromStorage() {
-    const fav = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (fav) {
-        state.favorites = JSON.parse(fav);
-        if (!localStorage.getItem(STORAGE_KEY)) {
-            localStorage.setItem(STORAGE_KEY, fav);
-        }
-    }
-}
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
-// Сохранение в localStorage
-function saveToStorage() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.favorites));
-}
-
-// Генерация шаблона карточки (маска заполнения)
-function generateMask() {
-    const mask = Array(3).fill().map(() => Array(9).fill(false));
-    const positions = [];
-    for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 9; col++) {
-            positions.push([row, col]);
-        }
-    }
-    // Выбираем 15 случайных позиций
-    const selected = [];
-    while (selected.length < 15) {
-        const idx = Math.floor(Math.random() * positions.length);
-        const pos = positions.splice(idx, 1)[0];
-        selected.push(pos);
-        mask[pos[0]][pos[1]] = true;
-    }
-    // Проверяем, чтобы в каждом ряду было ровно 5 заполненных
-    for (let row = 0; row < 3; row++) {
-        const filled = mask[row].filter(cell => cell).length;
-        if (filled !== 5) {
-            return generateMask(); // Рекурсивно генерируем заново
-        }
-    }
-    return mask;
-}
-
-// Генерация чисел для карточки
-function generateNumbers(mask) {
-    const numbers = Array(3).fill().map(() => Array(9).fill(null));
-    const ranges = [
-        [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
-        [50, 59], [60, 69], [70, 79], [80, 90]
-    ];
-    for (let col = 0; col < 9; col++) {
-        const colNumbers = [];
-        for (let row = 0; row < 3; row++) {
-            if (mask[row][col]) {
-                colNumbers.push(row);
-            }
-        }
-        if (colNumbers.length > 0) {
-            const [min, max] = ranges[col];
-            const available = [];
-            for (let n = min; n <= max; n++) {
-                available.push(n);
-            }
-            // Перемешиваем и выбираем
-            for (let i = available.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [available[i], available[j]] = [available[j], available[i]];
-            }
-            colNumbers.sort((a, b) => a - b); // Сортируем ряды по возрастанию
-            for (let i = 0; i < colNumbers.length; i++) {
-                numbers[colNumbers[i]][col] = available[i];
-            }
-        }
-    }
-    return numbers;
-}
-
-// Создание карточки
-function createCard() {
-    const mask = generateMask();
-    const numbers = generateNumbers(mask);
-    return {
-        id: Date.now() + Math.random(),
-        mask,
-        numbers,
-        marked: Array(3).fill().map(() => Array(9).fill(false)),
-        wonRows: [false, false, false],
-        favorite: false
-    };
-}
-
-// Перегенерация карточки (с новым шаблоном)
-function regenerateCard(card) {
-    let newMask;
-    let attempts = 0;
-    do {
-        newMask = generateMask();
-        attempts++;
-    } while (JSON.stringify(newMask) === JSON.stringify(card.mask) && attempts < 10); // Избегаем повторения шаблона
-    const newNumbers = generateNumbers(newMask);
-    card.mask = newMask;
-    card.numbers = newNumbers;
-    card.marked = Array(3).fill().map(() => Array(9).fill(false));
-    card.wonRows = [false, false, false];
-    return card;
-}
-
-// Рендер карточки
-function renderCard(card, container, isGame = false) {
-    const cardDiv = document.createElement('div');
-    cardDiv.className = 'card';
-    cardDiv.dataset.id = card.id;
-
-    const grid = document.createElement('div');
-    grid.className = 'card-grid';
-
-    for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 9; col++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            if (card.mask[row][col]) {
-                cell.textContent = card.numbers[row][col];
-                cell.dataset.row = row;
-                cell.dataset.col = col;
-                if (isGame && card.marked[row][col]) {
-                    cell.classList.add('marked');
-                }
-                if (isGame) {
-                    cell.addEventListener('click', () => toggleMark(card.id, row, col));
-                }
-            } else {
-                cell.classList.add('empty');
-            }
-            grid.appendChild(cell);
-        }
-    }
-
-    cardDiv.appendChild(grid);
-
-    if (!isGame) {
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
-
-        const favoriteBtn = document.createElement('button');
-        favoriteBtn.textContent = card.favorite ? 'УБРАТЬ ИЗ ИЗБРАННОГО' : 'В ИЗБРАННОЕ';
-        favoriteBtn.addEventListener('click', () => toggleFavorite(card));
-        actions.appendChild(favoriteBtn);
-
-        const regenerateBtn = document.createElement('button');
-        regenerateBtn.textContent = 'ПЕРЕГЕНЕРИРОВАТЬ';
-        regenerateBtn.addEventListener('click', () => {
-            regenerateCard(card);
-            renderMenu();
-            showToast('Карточка перегенерирована');
-        });
-        actions.appendChild(regenerateBtn);
-
-        cardDiv.appendChild(actions);
-    }
-
-    container.appendChild(cardDiv);
-}
-
-// Рендер главного меню
-function renderMenu() {
-    const preview = document.getElementById('cards-preview');
-    preview.innerHTML = '';
-    state.cards.forEach(card => renderCard(card, preview));
-    document.getElementById('selected-count').textContent = `Выбрано: ${state.selectedCount}`;
-    document.getElementById('start-game-btn').disabled = state.cards.length === 0;
-}
-
-// Рендер экрана игры
-function renderGame() {
-    const gameCards = document.getElementById('game-cards');
-    gameCards.innerHTML = '';
-    state.gameCards.forEach(card => renderCard(card, gameCards, true));
-}
-
-// Переключение экрана
-function switchScreen(screen) {
-    state.screen = screen;
-    document.getElementById('main-menu').classList.toggle('hidden', screen !== 'menu');
-    document.getElementById('game-screen').classList.toggle('hidden', screen !== 'game');
-    updateSearchPanelOffset();
-}
-
-function updateSearchPanelOffset() {
-    const app = document.getElementById('app');
-    const gameScreen = document.getElementById('game-screen');
-    const searchPanel = document.getElementById('search-panel');
-    if (!app || !gameScreen || !searchPanel) return;
-
-    const isOpen = state.screen === 'game' && state.panels.search && !searchPanel.classList.contains('hidden');
-    const panelHeight = isOpen ? Math.ceil(searchPanel.getBoundingClientRect().height) : 0;
-
-    app.style.setProperty('--search-panel-height', `${panelHeight}px`);
-    gameScreen.classList.toggle('search-open', isOpen);
-}
-
-// Переключение панели
-function togglePanel(panel, open) {
-    state.panels[panel] = open;
-    const panelElement = document.getElementById(`${panel}-panel`);
-    panelElement.classList.toggle('open', open);
-    panelElement.classList.toggle('hidden', !open);
-    panelElement.setAttribute('aria-hidden', String(!open));
-    updateSearchPanelOffset();
-}
-
-// Выбор количества карточек
-function selectCount(count) {
-    state.selectedCount = count;
-    state.cards = [];
-    for (let i = 0; i < count; i++) {
-        state.cards.push(createCard());
-    }
-    renderMenu();
-    togglePanel('count', false);
-}
-
-// Начало игры
-function startGame() {
-    if (state.cards.length === 0) {
-        showToast('Сначала выберите хотя бы одну карточку');
-        return;
-    }
-    state.gameCards = state.cards.map(card => ({ ...card, marked: Array(3).fill().map(() => Array(9).fill(false)), wonRows: [false, false, false] }));
-    state.markedCells = {};
-    state.wonRows = {};
-    switchScreen('game');
-    renderGame();
-}
-
-// Перезапуск игры
-function restartGame() {
-    state.gameCards.forEach(card => {
-        card.marked = Array(3).fill().map(() => Array(9).fill(false));
-        card.wonRows = [false, false, false];
-    });
-    state.markedCells = {};
-    state.wonRows = {};
-    renderGame();
-}
-
-// Возврат в меню
-function backToMenu() {
-    switchScreen('menu');
-}
-
-// Переключение отметки клетки
-function toggleMark(cardId, row, col) {
-    const card = state.gameCards.find(c => c.id === cardId);
-    if (!card || !card.mask[row][col]) return;
-    card.marked[row][col] = !card.marked[row][col];
-    renderGame();
-    checkWin(card);
-}
-
-// Проверка выигрыша
-function checkWin(card) {
-    for (let row = 0; row < 3; row++) {
-        if (card.wonRows[row]) continue;
-        const markedInRow = card.marked[row].filter((marked, col) => card.mask[row][col] && marked).length;
-        if (markedInRow === 5) {
-            card.wonRows[row] = true;
-            showWinModal();
-            return;
-        }
-    }
-}
-
-// Показ модального окна победы
-function showWinModal() {
-    document.getElementById('win-modal').classList.remove('hidden');
-}
-
-// Скрытие модального окна
-function hideWinModal() {
-    document.getElementById('win-modal').classList.add('hidden');
-}
-
-// Продолжить игру
-function continueGame() {
-    hideWinModal();
-}
-
-// Перезапуск из модального
-function restartFromModal() {
-    hideWinModal();
-    restartGame();
-}
-
-// Переключение избранного
-function toggleFavorite(card) {
-    card.favorite = !card.favorite;
-    if (card.favorite) {
-        if (!state.favorites.find(f => f.id === card.id)) {
-            state.favorites.push({ ...card });
-        }
-        showToast('Карточка добавлена в избранное');
-    } else {
-        state.favorites = state.favorites.filter(f => f.id !== card.id);
-        showToast('Карточка удалена из избранного');
-    }
-    saveToStorage();
-    renderMenu();
-    renderGame();
-    renderFavorites();
-}
-
-// Рендер избранных
-function renderFavorites() {
-    const list = document.getElementById('favorites-list');
-    list.innerHTML = '';
-    if (state.favorites.length === 0) {
-        list.innerHTML = '&lt;p&gt;Избранных карточек нет&lt;/p&gt;';
-        return;
-    }
-    state.favorites.forEach(card => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = 'favorite-item';
-        renderCard(card, cardDiv);
-        const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'УБРАТЬ';
-        removeBtn.addEventListener('click', () => {
-            card.favorite = false;
-            state.favorites = state.favorites.filter(f => f.id !== card.id);
-            saveToStorage();
-            renderFavorites();
-            showToast('Карточка удалена из избранного');
-        });
-        cardDiv.appendChild(removeBtn);
-        list.appendChild(cardDiv);
-    });
-}
-
-// Поиск числа
-function searchNumber(num) {
-    if (num < 1 || num > 90) {
-        showToast('Число должно быть от 1 до 90');
-        return;
-    }
-    let found = false;
-    state.gameCards.forEach(card => {
-        for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 9; col++) {
-                if (card.numbers[row][col] === num) {
-                    card.marked[row][col] = true;
-                    found = true;
-                }
-            }
-        }
-    });
-    if (found) {
-        showToast(`Число ${num} найдено и отмечено`);
-        renderGame();
-        state.gameCards.forEach(card => checkWin(card));
-    } else {
-        showToast(`Число ${num} не найдено`);
-    }
-}
-
-// Показ уведомления
-function showToast(message) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-// Обработчики событий
-document.addEventListener('DOMContentLoaded', () => {
-    loadFromStorage();
-    renderMenu();
-    updateSearchPanelOffset();
-
-    // Главное меню
-    document.getElementById('select-count-btn').addEventListener('click', () => togglePanel('count', true));
-    document.getElementById('start-game-btn').addEventListener('click', startGame);
-
-    // Панель количества
-    document.querySelectorAll('#count-panel .count-buttons button').forEach(btn => {
-        btn.addEventListener('click', () => selectCount(parseInt(btn.dataset.count)));
-    });
-    document.getElementById('close-count-panel').addEventListener('click', () => togglePanel('count', false));
-
-    // Экран игры
-    document.getElementById('search-btn').addEventListener('click', () => {
-        const shouldOpen = !state.panels.search;
-        togglePanel('search', shouldOpen);
-        if (shouldOpen) {
-            setTimeout(() => document.getElementById('search-input')?.focus(), 0);
-        }
-    });
-    document.getElementById('restart-btn').addEventListener('click', restartGame);
-    document.getElementById('back-to-menu-btn').addEventListener('click', backToMenu);
-
-    // Панель поиска
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/[^0-9]/g, '');
-    });
-    document.querySelectorAll('#search-panel .keypad button[data-key]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const input = document.getElementById('search-input');
-            if (input.value.length < 2) {
-                input.value += btn.dataset.key;
-            }
-        });
-    });
-    document.getElementById('clear-search').addEventListener('click', () => {
-        document.getElementById('search-input').value = '';
-    });
-    document.getElementById('backspace-search').addEventListener('click', () => {
-        const input = document.getElementById('search-input');
-        input.value = input.value.slice(0, -1);
-    });
-    document.getElementById('check-search').addEventListener('click', () => {
-        const num = parseInt(document.getElementById('search-input').value);
-        if (!isNaN(num)) {
-            searchNumber(num);
-            document.getElementById('search-input').value = '';
-        }
-    });
-    document.getElementById('close-search-panel').addEventListener('click', () => togglePanel('search', false));
-
-    // Избранные
-    document.getElementById('favorites-btn').addEventListener('click', () => {
-        renderFavorites();
-        togglePanel('favorites', true);
-    });
-    document.getElementById('close-favorites-panel').addEventListener('click', () => togglePanel('favorites', false));
-
-    // Модальное
-    document.getElementById('continue-btn').addEventListener('click', continueGame);
-    document.getElementById('restart-modal-btn').addEventListener('click', restartFromModal);
-
-    // Регистрация service worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js', { scope: './' });
-    }
-
-    window.addEventListener('resize', updateSearchPanelOffset);
+document.addEventListener("DOMContentLoaded", () => {
+  bindEvents();
+  restoreState();
+  render();
+  showScreen(state.screen);
+  registerServiceWorker();
 });
+
+function bindEvents() {
+  $$("[data-screen-link]").forEach((button) => {
+    button.addEventListener("click", () => showScreen(button.dataset.screenLink));
+  });
+  $$("[data-action='home']").forEach((button) => {
+    button.addEventListener("click", () => showScreen("home"));
+  });
+
+  $("#start-draw").addEventListener("click", startDraw);
+  $("#pause-draw").addEventListener("click", pauseDraw);
+  $("#resume-draw").addEventListener("click", resumeDraw);
+  $("#reset-draw").addEventListener("click", resetHostGame);
+  $("#clear-called").addEventListener("click", clearCalledNumbers);
+  $("#generate-host-cards").addEventListener("click", generateHostCards);
+  $("#speed-select").addEventListener("change", updateHostSettings);
+  $("#host-card-count").addEventListener("change", updateHostSettings);
+
+  $("#generate-player-cards").addEventListener("click", generatePlayerCards);
+  $("#find-number").addEventListener("click", findPlayerNumber);
+  $("#clear-player-marks").addEventListener("click", clearPlayerMarks);
+  $("#player-card-count").addEventListener("change", updatePlayerSettings);
+  $("#manual-number").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") findPlayerNumber();
+  });
+}
+
+function showScreen(screen) {
+  state.screen = screen;
+  if (screen === "host" && state.host.cards.length === 0) {
+    generateCardsFor("host", state.host.cardCount, false);
+  }
+  if (screen === "cards" && state.player.cards.length === 0) {
+    generateCardsFor("player", state.player.cardCount, false);
+  }
+
+  $$(".screen").forEach((section) => {
+    section.classList.toggle("hidden", section.dataset.screen !== screen);
+  });
+
+  if (screen !== "host") pauseDraw();
+  render();
+  saveState();
+}
+
+function createNumberPool() {
+  return Array.from({ length: MAX_NUMBER }, (_, index) => index + 1);
+}
+
+function ensureHostPool() {
+  if (state.host.pool.length === 0 && state.host.called.length === 0) {
+    state.host.pool = createNumberPool();
+  }
+}
+
+function startDraw() {
+  ensureHostPool();
+  if (state.host.running) return;
+  drawNextNumber();
+  scheduleNextDraw();
+}
+
+function pauseDraw() {
+  if (state.host.timer) {
+    clearInterval(state.host.timer);
+    state.host.timer = null;
+  }
+  state.host.running = false;
+  saveState();
+}
+
+function resumeDraw() {
+  ensureHostPool();
+  if (state.host.pool.length === 0 || state.host.running) return;
+  scheduleNextDraw();
+}
+
+function scheduleNextDraw() {
+  pauseDraw();
+  state.host.running = true;
+  state.host.timer = setInterval(drawNextNumber, SPEEDS[state.host.speed]);
+  saveState();
+}
+
+function drawNextNumber() {
+  ensureHostPool();
+  if (state.host.pool.length === 0) {
+    pauseDraw();
+    return;
+  }
+
+  const index = Math.floor(Math.random() * state.host.pool.length);
+  const number = state.host.pool.splice(index, 1)[0];
+  state.host.current = number;
+  state.host.called.push(number);
+  speakNumber(number);
+  renderHost();
+  saveState();
+}
+
+function resetHostGame() {
+  pauseDraw();
+  state.host.pool = createNumberPool();
+  state.host.called = [];
+  state.host.current = null;
+  renderHost();
+  saveState();
+}
+
+function clearCalledNumbers() {
+  resetHostGame();
+}
+
+function updateHostSettings() {
+  state.host.speed = $("#speed-select").value;
+  state.host.cardCount = Number.parseInt($("#host-card-count").value, 10);
+  if (state.host.running) scheduleNextDraw();
+  saveState();
+}
+
+function updatePlayerSettings() {
+  state.player.cardCount = Number.parseInt($("#player-card-count").value, 10);
+  saveState();
+}
+
+function generateHostCards() {
+  updateHostSettings();
+  generateCardsFor("host", state.host.cardCount, true);
+}
+
+function generatePlayerCards() {
+  updatePlayerSettings();
+  state.player.markedNumbers = [];
+  generateCardsFor("player", state.player.cardCount, true);
+}
+
+function generateCardsFor(mode, count, shouldRender = true) {
+  const cards = Array.from({ length: clampCount(count) }, (_, index) => createLotoCard(index + 1));
+  if (mode === "host") {
+    state.host.cards = cards;
+  } else {
+    state.player.cards = cards;
+  }
+  if (shouldRender) {
+    render();
+    saveState();
+  }
+}
+
+function createLotoCard(number) {
+  const mask = createMask();
+  const values = Array.from({ length: 3 }, () => Array(9).fill(null));
+  const ranges = [
+    [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
+    [50, 59], [60, 69], [70, 79], [80, 90]
+  ];
+
+  for (let col = 0; col < 9; col += 1) {
+    const rows = [0, 1, 2].filter((row) => mask[row][col]);
+    const columnNumbers = shuffle(range(ranges[col][0], ranges[col][1]))
+      .slice(0, rows.length)
+      .sort((a, b) => a - b);
+
+    rows.sort((a, b) => a - b).forEach((row, index) => {
+      values[row][col] = columnNumbers[index];
+    });
+  }
+
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    title: `Карточка ${number}`,
+    numbers: values
+  };
+}
+
+function createMask() {
+  const mask = Array.from({ length: 3 }, () => Array(9).fill(false));
+  for (let row = 0; row < 3; row += 1) {
+    shuffle(range(0, 8)).slice(0, 5).forEach((col) => {
+      mask[row][col] = true;
+    });
+  }
+  return mask;
+}
+
+function findPlayerNumber() {
+  const input = $("#manual-number");
+  const number = Number.parseInt(input.value, 10);
+  if (!Number.isInteger(number) || number < 1 || number > MAX_NUMBER) {
+    input.value = "";
+    return;
+  }
+  if (!state.player.markedNumbers.includes(number)) {
+    state.player.markedNumbers.push(number);
+  }
+  input.value = "";
+  renderPlayerCards();
+  saveState();
+}
+
+function clearPlayerMarks() {
+  state.player.markedNumbers = [];
+  renderPlayerCards();
+  saveState();
+}
+
+function render() {
+  renderHost();
+  renderPlayer();
+}
+
+function renderHost() {
+  $("#current-number").textContent = state.host.current ?? "--";
+  $("#numbers-left").textContent = String(state.host.pool.length || (state.host.called.length ? 0 : MAX_NUMBER));
+  $("#called-count").textContent = String(state.host.called.length);
+  $("#speed-select").value = state.host.speed;
+  $("#host-card-count").value = String(state.host.cardCount);
+  renderCalledNumbers();
+  renderCards("#host-cards", state.host.cards, state.host.called);
+  flashCurrentNumber();
+}
+
+function renderPlayer() {
+  $("#player-card-count").value = String(state.player.cardCount);
+  renderPlayerCards();
+}
+
+function renderPlayerCards() {
+  renderCards("#player-cards", state.player.cards, state.player.markedNumbers);
+}
+
+function renderCalledNumbers() {
+  const list = $("#called-list");
+  list.innerHTML = "";
+  state.host.called.forEach((number, index) => {
+    const chip = document.createElement("span");
+    chip.className = "number-chip";
+    chip.textContent = String(number);
+    if (index >= state.host.called.length - 3) chip.classList.add("marked");
+    list.appendChild(chip);
+  });
+}
+
+function renderCards(selector, cards, markedNumbers) {
+  const container = $(selector);
+  container.innerHTML = "";
+  cards.forEach((card) => {
+    const article = document.createElement("article");
+    article.className = "loto-card";
+
+    const title = document.createElement("div");
+    title.className = "card-title";
+    title.textContent = card.title;
+
+    const grid = document.createElement("div");
+    grid.className = "ticket-grid";
+    card.numbers.flat().forEach((value) => {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "ticket-cell";
+      if (value === null) {
+        cell.classList.add("empty");
+        cell.disabled = true;
+      } else {
+        cell.textContent = String(value);
+        if (markedNumbers.includes(value)) cell.classList.add("marked");
+      }
+      grid.appendChild(cell);
+    });
+
+    article.append(title, grid);
+    container.appendChild(article);
+  });
+}
+
+function flashCurrentNumber() {
+  const current = $("#current-number");
+  current.classList.remove("pop");
+  void current.offsetWidth;
+  current.classList.add("pop");
+}
+
+function speakNumber(number) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(`Число ${number}`);
+  utterance.lang = "ru-RU";
+  utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+}
+
+function saveState() {
+  const data = {
+    screen: state.screen,
+    host: {
+      pool: state.host.pool,
+      called: state.host.called,
+      current: state.host.current,
+      speed: state.host.speed,
+      cardCount: state.host.cardCount,
+      cards: state.host.cards
+    },
+    player: state.player
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function restoreState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    state.host.pool = createNumberPool();
+    return;
+  }
+
+  try {
+    const saved = JSON.parse(raw);
+    state.screen = ["home", "host", "cards"].includes(saved.screen) ? saved.screen : "home";
+    state.host.pool = sanitizeNumberList(saved.host?.pool);
+    state.host.called = sanitizeNumberList(saved.host?.called, false);
+    state.host.current = Number.isInteger(saved.host?.current) ? saved.host.current : null;
+    state.host.speed = SPEEDS[saved.host?.speed] ? saved.host.speed : "normal";
+    state.host.cardCount = clampCount(saved.host?.cardCount || 4);
+    state.host.cards = sanitizeCards(saved.host?.cards);
+    state.player.cardCount = clampCount(saved.player?.cardCount || 4);
+    state.player.cards = sanitizeCards(saved.player?.cards);
+    state.player.markedNumbers = sanitizeNumberList(saved.player?.markedNumbers);
+
+    if (state.host.pool.length === 0 && state.host.called.length === 0) {
+      state.host.pool = createNumberPool();
+    }
+  } catch (error) {
+    console.error("Не удалось восстановить состояние игры", error);
+    state.host.pool = createNumberPool();
+  }
+}
+
+function sanitizeCards(cards) {
+  if (!Array.isArray(cards)) return [];
+  return cards
+    .filter((card) => Array.isArray(card.numbers) && card.numbers.length === 3)
+    .map((card, index) => ({
+      id: card.id || `${Date.now()}-${index}`,
+      title: card.title || `Карточка ${index + 1}`,
+      numbers: card.numbers.map((row) => row.map((value) => {
+        const number = Number.parseInt(value, 10);
+        return Number.isInteger(number) && number >= 1 && number <= MAX_NUMBER ? number : null;
+      }))
+    }));
+}
+
+function sanitizeNumberList(list, unique = true) {
+  if (!Array.isArray(list)) return [];
+  const numbers = list
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= MAX_NUMBER);
+  return unique ? [...new Set(numbers)] : numbers;
+}
+
+function clampCount(value) {
+  const count = Number.parseInt(value, 10);
+  return Math.min(5, Math.max(1, Number.isInteger(count) ? count : 4));
+}
+
+function range(from, to) {
+  return Array.from({ length: to - from + 1 }, (_, index) => from + index);
+}
+
+function shuffle(items) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[randomIndex]] = [copy[randomIndex], copy[index]];
+  }
+  return copy;
+}
+
+function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(console.error);
+  }
+}
